@@ -9,5 +9,9 @@ export const profileConfig: ProfileConfig = {
 		enable: true, // 启用个人简介打字机效果
 		speed: 80, // 打字速度（毫秒）
 	},
-	links: [], // TODO: 改为你的社交链接
+	links: [
+		{ name: "GitHub", url: "https://github.com/lickoc", icon: "fa7-brands:github" },
+		{ name: "QQ", url: "https://qm.qq.com/q/1048796996", icon: "fa7-brands:qq" },
+		{ name: "Email", url: "mailto:lctlz1239@yeah.net", icon: "mdi:email" },
+	],
 };
