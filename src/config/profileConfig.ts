@@ -3,7 +3,7 @@ import type { ProfileConfig } from "../types/config";
 // 个人资料配置
 export const profileConfig: ProfileConfig = {
 	avatar: "assets/images/avatar.webp", // 相对于 /src 目录。如果以 '/' 开头，则相对于 /public 目录
-	name: "随风录", // 站点/作者名称（与备案名一致，可改为你的昵称）
+	name: "Lickoc", // 你的昵称/ID
 	bio: "", // TODO: 改为你的简介
 	typewriter: {
 		enable: true, // 启用个人简介打字机效果
