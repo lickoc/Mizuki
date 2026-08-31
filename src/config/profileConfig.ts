@@ -4,7 +4,7 @@ import type { ProfileConfig } from "../types/config";
 export const profileConfig: ProfileConfig = {
 	avatar: "assets/images/avatar.webp", // 相对于 /src 目录。如果以 '/' 开头，则相对于 /public 目录
 	name: "Lickoc", // 你的昵称/ID
-	bio: "", // TODO: 改为你的简介
+	bio: "What I cannot create, I do not understand",
 	typewriter: {
 		enable: true, // 启用个人简介打字机效果
 		speed: 80, // 打字速度（毫秒）
@@ -13,5 +13,6 @@ export const profileConfig: ProfileConfig = {
 		{ name: "GitHub", url: "https://github.com/lickoc", icon: "fa7-brands:github" },
 		{ name: "QQ", url: "https://qm.qq.com/q/1048796996", icon: "fa7-brands:qq" },
 		{ name: "Email", url: "mailto:lctlz1239@yeah.net", icon: "mdi:email" },
+		{ name: "Bilibili", url: "https://space.bilibili.com/290824740", icon: "fa7-brands:bilibili" },
 	],
 };
