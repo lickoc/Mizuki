@@ -163,8 +163,9 @@ async function getData(
 			}
 		}
 
-		// 总集数
-		const totalEpisodes = bangumi?.total_count || 0;
+		// 总集数（Bilibili API 对未知总集数返回 -1，统一归为 0）
+		const rawTotal = bangumi?.total_count;
+		const totalEpisodes = rawTotal && rawTotal > 0 ? rawTotal : 0;
 		const progressPercent =
 			totalEpisodes > 0 && progress > 0
 				? Math.round((progress / totalEpisodes) * 100)

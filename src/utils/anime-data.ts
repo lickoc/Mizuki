@@ -63,7 +63,7 @@ export function loadAnimeData(filename: string): AnimeItem[] {
 			status: item.status || "planned",
 			rating: Number(item.rating) || 0,
 			progress: Number(item.progress) || 0,
-			totalEpisodes: Number(item.totalEpisodes) || 12,
+			totalEpisodes: Number(item.totalEpisodes) > 0 ? Number(item.totalEpisodes) : 0,
 			description: item.description || "",
 			year: item.year || "",
 			studio: item.studio || "",

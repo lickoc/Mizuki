@@ -90,18 +90,24 @@ const progressPercent =
 		</div>
 
 		{
-			anime.status === "watching" && (
+			anime.status === "watching" && anime.progress > 0 && (
 				<div class="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-2">
-					<div class="w-full bg-white/20 rounded-full h-1.5 mb-1">
-						<div
-							class="bg-linear-to-r from-emerald-400 to-teal-400 h-1.5 rounded-full transition-all duration-300"
-							style={`width: ${progressPercent}%`}
-						/>
-					</div>
-					<div class="text-white text-xs font-medium">
-						{anime.progress}/{anime.totalEpisodes} (
-						{Math.round(progressPercent)}%)
-					</div>
+					{anime.totalEpisodes > 0 ? (
+						<div class="w-full bg-white/20 rounded-full h-1.5 mb-1">
+							<div
+								class="bg-linear-to-r from-emerald-400 to-teal-400 h-1.5 rounded-full transition-all duration-300"
+								style={`width: ${progressPercent}%`}
+							/>
+						</div>
+						<div class="text-white text-xs font-medium">
+							{anime.progress}/{anime.totalEpisodes} (
+							{Math.round(progressPercent)}%)
+						</div>
+					) : (
+						<div class="text-white text-xs font-medium">
+							已看 {anime.progress} 话
+						</div>
+					)}
 				</div>
 			)
 		}
