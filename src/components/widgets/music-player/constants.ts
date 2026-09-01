@@ -1,6 +1,7 @@
 import clCover from "../../../assets/music/cover/cl.webp?url";
 import dazbeeCover from "../../../assets/music/cover/dazbee.webp?url";
 import hitoriCover from "../../../assets/music/cover/hitori.webp?url";
+import sakamichiCover from "../../../assets/music/cover/sakamichi.jpg?url";
 import xryxCover from "../../../assets/music/cover/xryx.webp?url";
 import type { Song } from "./types";
 
@@ -42,6 +43,14 @@ export const LOCAL_PLAYLIST: Song[] = [
 		cover: clCover,
 		url: "assets/music/url/cl.mp3",
 		duration: 242,
+	},
+	{
+		id: 5,
+		title: "坂道のメロディ",
+		artist: "YUKI",
+		cover: sakamichiCover,
+		url: "assets/music/url/sakamichi.mp3",
+		duration: 257,
 	},
 ];
 
