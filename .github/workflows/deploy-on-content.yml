@@ -39,6 +39,14 @@ jobs:
             echo "Removed broken symlink src/data, created directory"
           fi
 
+      # 用 actions/checkout 直接检出内容仓库，避免 git clone 权限问题
+      - name: Checkout content repo
+        uses: actions/checkout@v4
+        with:
+          repository: lickoc/Mizuki-Content
+          path: content
+          token: ${{ secrets.CONTENT_REPO_TOKEN }}
+
       - name: Build site
         run: pnpm run build
         env:
