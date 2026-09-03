@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -30,12 +30,10 @@ jobs:
 
       - name: Create .env file
         run: |
-          cat > .env << EOF
-          ENABLE_CONTENT_SYNC=true
-          CONTENT_REPO_URL=${{ secrets.CONTENT_REPO_URL }}
-          CONTENT_DIR=./content
-          BILI_SESSDATA=${{ secrets.BILI_SESSDATA }}
-          EOF
+          echo "ENABLE_CONTENT_SYNC=true" > .env
+          echo "CONTENT_REPO_URL=${{ secrets.CONTENT_REPO_URL }}" >> .env
+          echo "CONTENT_DIR=./content" >> .env
+          echo "BILI_SESSDATA=${{ secrets.BILI_SESSDATA }}" >> .env
 
       - name: Build site
         run: pnpm run build
