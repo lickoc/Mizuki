@@ -14,14 +14,14 @@ console.log("已加载 .env 配置文件\n");
 // 从环境变量读取配置
 const ENABLE_CONTENT_SYNC = process.env.ENABLE_CONTENT_SYNC !== "false"; // 默认启用
 const IS_CI = !!process.env.CI;
-let CONTENT_REPO_URL = process.env.CONTENT_REPO_URL || "";
-const CONTENT_DIR = process.env.CONTENT_DIR || path.join(rootDir, "content");
+let CONTENT_REPO_URL = (process.env.CONTENT_REPO_URL || "").trim();
+const CONTENT_DIR = (process.env.CONTENT_DIR || path.join(rootDir, "content")).trim();
 
 // CI 环境中将 SSH URL 转换为 HTTPS（需要 CONTENT_REPO_TOKEN）
 if (IS_CI && CONTENT_REPO_URL.startsWith("git@github.com:")) {
-	const token = process.env.CONTENT_REPO_TOKEN || "";
+	const token = (process.env.CONTENT_REPO_TOKEN || "").trim();
 	if (token) {
-		const repoPath = CONTENT_REPO_URL.replace("git@github.com:", "");
+		const repoPath = CONTENT_REPO_URL.replace("git@github.com:", "").trim();
 		CONTENT_REPO_URL = `https://x-access-token:${token}@github.com/${repoPath}`;
 		console.log("CI 模式：已将 SSH URL 转换为 HTTPS\n");
 	} else {
