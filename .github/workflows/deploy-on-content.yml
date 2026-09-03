@@ -65,6 +65,8 @@ jobs:
           source: "dist/*"
           target: "/home/ubuntu/blog-dist"
           strip_components: 1
+          ssh_options: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          command_timeout: "5m"
 
       - name: Job summary
         run: |
