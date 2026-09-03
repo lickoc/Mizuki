@@ -1,0 +1,59 @@
+# 当内容仓库触发 repository_dispatch 或主仓库有新推送时，自动构建并部署到服务器
+name: Build and Deploy
+
+on:
+  repository_dispatch:
+    types: [content-updated]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          ENABLE_CONTENT_SYNC=true
+          CONTENT_REPO_URL=${{ secrets.CONTENT_REPO_URL }}
+          CONTENT_DIR=./content
+          BILI_SESSDATA=${{ secrets.BILI_SESSDATA }}
+          EOF
+
+      - name: Build site
+        run: pnpm run build
+
+      - name: Deploy to server via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "dist/*"
+          target: "/home/ubuntu/blog-dist"
+          strip_components: 1
+
+      - name: Job summary
+        run: |
+          echo "✅ Build and deploy completed" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "**Content commit:** ${{ github.event.client_payload.message }}" >> $GITHUB_STEP_SUMMARY
+          fi
