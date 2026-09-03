@@ -13,8 +13,21 @@ console.log("已加载 .env 配置文件\n");
 
 // 从环境变量读取配置
 const ENABLE_CONTENT_SYNC = process.env.ENABLE_CONTENT_SYNC !== "false"; // 默认启用
-const CONTENT_REPO_URL = process.env.CONTENT_REPO_URL || "";
+const IS_CI = !!process.env.CI;
+let CONTENT_REPO_URL = process.env.CONTENT_REPO_URL || "";
 const CONTENT_DIR = process.env.CONTENT_DIR || path.join(rootDir, "content");
+
+// CI 环境中将 SSH URL 转换为 HTTPS（需要 CONTENT_REPO_TOKEN）
+if (IS_CI && CONTENT_REPO_URL.startsWith("git@github.com:")) {
+	const token = process.env.CONTENT_REPO_TOKEN || "";
+	if (token) {
+		const repoPath = CONTENT_REPO_URL.replace("git@github.com:", "");
+		CONTENT_REPO_URL = `https://x-access-token:${token}@github.com/${repoPath}`;
+		console.log("CI 模式：已将 SSH URL 转换为 HTTPS\n");
+	} else {
+		console.warn("CI 模式：SSH URL 需要 CONTENT_REPO_TOKEN 才能克隆\n");
+	}
+}
 
 console.log("开始同步内容...\n");
 
@@ -168,32 +181,37 @@ for (const mapping of contentMappings) {
 }
 
 console.log("\n内容同步完成\n");
-try {
-	// 1. 获取 content 分支名
-	const branch = execSync("git rev-parse --abbrev-ref HEAD", {
-		cwd: CONTENT_DIR,
-	})
-		.toString()
-		.trim();
+// CI 环境跳过提交（detached HEAD + 无 git identity）
+if (IS_CI) {
+	console.log("CI 模式：跳过 git commit\n");
+} else {
+	try {
+		// 1. 获取 content 分支名
+		const branch = execSync("git rev-parse --abbrev-ref HEAD", {
+			cwd: CONTENT_DIR,
+		})
+			.toString()
+			.trim();
 
-	// 2. 获取 content commit hash（短）
-	const hash = execSync("git rev-parse --short HEAD", {
-		cwd: CONTENT_DIR,
-	})
-		.toString()
-		.trim();
+		// 2. 获取 content commit hash（短）
+		const hash = execSync("git rev-parse --short HEAD", {
+			cwd: CONTENT_DIR,
+		})
+			.toString()
+			.trim();
 
-	// 3. 提交主仓库
-	execSync("git add .", { cwd: rootDir });
+		// 3. 提交主仓库
+		execSync("git add .", { cwd: rootDir });
 
-	execSync(
-		`git commit -m "chore(content): sync ${branch}@${hash}"`,
-		{ cwd: rootDir },
-	);
+		execSync(
+			`git commit -m "chore(content): sync ${branch}@${hash}"`,
+			{ cwd: rootDir },
+		);
 
-	console.log(`已提交内容更新（${branch}@${hash}）`);
-} catch {
-	console.log("没有变化，跳过提交");
+		console.log(`已提交内容更新（${branch}@${hash}）`);
+	} catch {
+		console.log("没有变化，跳过提交");
+	}
 }
 
 // 递归复制函数

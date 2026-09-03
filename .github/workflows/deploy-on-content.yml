@@ -28,15 +28,25 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Create .env file
+      # 仓库检出时 src/data 是指向 content/data 的符号链接，
+      # CI 环境中 content/ 不存在会导致 broken symlink，
+      # update-bilibili.mjs 写入时 ENOENT。先删再建目录即可。
+      - name: Fix broken src/data symlink
         run: |
-          echo "ENABLE_CONTENT_SYNC=true" > .env
-          echo "CONTENT_REPO_URL=${{ secrets.CONTENT_REPO_URL }}" >> .env
-          echo "CONTENT_DIR=./content" >> .env
-          echo "BILI_SESSDATA=${{ secrets.BILI_SESSDATA }}" >> .env
+          if [ -L src/data ] && [ ! -e src/data ]; then
+            rm src/data
+            mkdir -p src/data
+            echo "Removed broken symlink src/data, created directory"
+          fi
 
       - name: Build site
         run: pnpm run build
+        env:
+          ENABLE_CONTENT_SYNC: 'true'
+          CONTENT_REPO_URL: ${{ secrets.CONTENT_REPO_URL }}
+          CONTENT_REPO_TOKEN: ${{ secrets.CONTENT_REPO_TOKEN }}
+          CONTENT_DIR: './content'
+          BILI_SESSDATA: ${{ secrets.BILI_SESSDATA }}
 
       - name: Deploy to server via SCP
         uses: appleboy/scp-action@v0.1.7
