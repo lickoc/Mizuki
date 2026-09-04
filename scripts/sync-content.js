@@ -1,4 +1,4 @@
-﻿import { execSync } from "child_process";
+import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -22,14 +22,12 @@ if (IS_CI) {
 	const token = (process.env.CONTENT_REPO_TOKEN || "").trim();
 	if (token) {
 		if (CONTENT_REPO_URL.startsWith("git@github.com:")) {
-			// SSH URL -> HTTPS + token
 			const repoPath = CONTENT_REPO_URL.replace("git@github.com:", "").trim();
 			CONTENT_REPO_URL = `https://x-access-token:${token}@github.com/${repoPath}`;
 			console.log("CI 模式：已将 SSH URL 转换为 HTTPS\n");
 		} else if (CONTENT_REPO_URL.startsWith("https://github.com/")) {
-			// HTTPS URL -> 注入 token
 			CONTENT_REPO_URL = CONTENT_REPO_URL.replace(
-				https://github.com/,
+				"https://github.com/",
 				`https://x-access-token:${token}@github.com/`
 			);
 			console.log("CI 模式：已为 HTTPS URL 注入 token\n");
