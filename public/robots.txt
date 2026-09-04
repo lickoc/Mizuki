@@ -1,4 +1,4 @@
 ﻿User-agent: *
 Allow: /
 
-Sitemap: https://lickoc.site/sitemap.xml
+Sitemap: https://lickoc.site/sitemap-index.xml
