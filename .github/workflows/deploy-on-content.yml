@@ -33,7 +33,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: self-hosted
-    timeout-minutes: 20
+    timeout-minutes: 45
 
     env:
       # 相对 runner workspace 根目录，与 checkout 的 path 保持一致
@@ -43,14 +43,32 @@ jobs:
       - name: Checkout main repo
         uses: actions/checkout@v4
 
+      - name: Seed content workspace from local clone
+        # 这台服务器到 GitHub 的带宽很窄：从零浅克隆内容仓库要 15 分钟以上，
+        # 会把整个 job 的超时预算吃光（实测 23 分钟后被取消）。
+        # 服务器上已有一份常驻克隆，先复制过来，后面 actions/checkout 就只需取增量。
+        run: |
+          set -e
+          seed=/home/ubuntu/Mizuki/content
+          if [ -d "$seed/.git" ]; then
+            rm -rf content
+            cp -a "$seed" content
+            echo "已从本地克隆预置 content（$(git -C content log --oneline -1)）"
+          else
+            echo "本地克隆不存在，跳过预置（将由 actions/checkout 完整克隆，会比较慢）"
+          fi
+
       - name: Checkout content repo
         uses: actions/checkout@v4
         with:
           repository: lickoc/Mizuki-Content
           path: content
           token: ${{ secrets.CONTENT_REPO_TOKEN }}
-          # 不参与 clean，避免影响后续 sync 建立的软链接目标
+          # 不参与 clean：content/ 不在主仓库索引里，
+          # 且上一轮的软链接目标需要保留给 sync 复用
           clean: false
+          # 只取目标提交，配合上面的预置克隆把传输量压到最小
+          fetch-depth: 1
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
