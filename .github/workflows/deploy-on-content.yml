@@ -129,6 +129,20 @@ jobs:
           echo "已发布文章："
           ls -1 /home/ubuntu/blog-dist/posts/ 2>/dev/null || echo "(无 posts 目录)"
 
+      - name: Refresh seed clone
+        # 让下次运行的预置克隆保持最新。
+        # 这一步只是性能优化，失败不影响已完成的部署，因此不硬失败。
+        if: success()
+        run: |
+          seed=/home/ubuntu/Mizuki/content
+          if [ -d "$seed/.git" ]; then
+            GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o ConnectTimeout=15" \
+              git -C "$seed" fetch origin main \
+              && git -C "$seed" reset --hard origin/main \
+              && echo "预置克隆已更新：$(git -C "$seed" log --oneline -1)" \
+              || echo "::warning::预置克隆刷新失败，不影响本次部署"
+          fi
+
       - name: Job summary
         if: always()
         run: |
