@@ -20,6 +20,10 @@ on:
     types: [content-updated]
   push:
     branches: [master]
+  # 安全网：万一某次 repository_dispatch 没送达（token 过期、调用失败等），
+  # 最迟一天内也会用最新内容重建一次，避免线上静默滞留在旧内容。
+  schedule:
+    - cron: "0 19 * * *" # 每天 03:00 北京时间
   workflow_dispatch:
 
 permissions:
