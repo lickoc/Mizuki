@@ -1,4 +1,18 @@
-# 当内容仓库触发 repository_dispatch 或主仓库有新推送时，自动构建并部署到服务器
+# 内容分离的唯一部署入口。
+#
+# 触发来源：
+#   1. 内容仓库 Mizuki-Content 推送后发送 repository_dispatch(content-updated)
+#   2. 本仓库 master 推送（代码更新）
+#   3. 手动触发
+#
+# 为什么用 self-hosted：腾讯云对异常来源 IP 的 SSH 登录有拦截，
+# GitHub 托管 Runner（美国 IP）推不到这台服务器，因此构建与部署都在服务器本机完成。
+#
+# 为什么不在这里再改 ENABLE_CONTENT_SYNC：
+# 构建前的 prebuild 钩子会跑 scripts/sync-content.js，它负责把 content/ 下的内容
+# 软链接进 src/content/posts、src/content/spec、src/data、public/images。
+# 一旦把它覆盖成 false，sync 会直接退出，构建就会拿旧快照当成"成功"——
+# 这正是之前线上内容不更新的根因，不要再犯。
 name: Build and Deploy
 
 on:
@@ -8,70 +22,105 @@ on:
     branches: [master]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# 构建与部署不能并发：多个 job 同时写 /home/ubuntu/blog-dist 会互相覆盖
+concurrency:
+  group: blog-deploy
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    timeout-minutes: 20
+
+    env:
+      # 相对 runner workspace 根目录，与 checkout 的 path 保持一致
+      CONTENT_DIR: ./content
+
     steps:
       - name: Checkout main repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      # 仓库检出时 src/data 是指向 content/data 的符号链接，
-      # CI 环境中 content/ 不存在会导致 broken symlink，
-      # update-bilibili.mjs 写入时 ENOENT。先删再建目录即可。
-      - name: Fix broken src/data symlink
-        run: |
-          if [ -L src/data ] && [ ! -e src/data ]; then
-            rm src/data
-            mkdir -p src/data
-            echo "Removed broken symlink src/data, created directory"
-          fi
-
-      # 用 actions/checkout 直接检出内容仓库，避免 git clone 权限问题
       - name: Checkout content repo
         uses: actions/checkout@v4
         with:
           repository: lickoc/Mizuki-Content
           path: content
           token: ${{ secrets.CONTENT_REPO_TOKEN }}
+          # 不参与 clean，避免影响后续 sync 建立的软链接目标
+          clean: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Sync content
+        # 显式跑一次，让"内容没同步上"在构建日志里立刻可见
+        run: pnpm run sync-content
+
+      - name: Verify content source
+        run: |
+          set -e
+          for d in src/content/posts src/content/spec src/data public/images; do
+            if [ ! -e "$d" ]; then
+              echo "::error::内容未同步到 $d，构建会使用旧快照或直接失败"
+              exit 1
+            fi
+          done
+          echo "内容源可读："
+          ls -1 src/content/posts/ | head -20
+          echo "内容仓库版本：$(git -C content log --oneline -1)"
 
       - name: Build site
         run: pnpm run build
-        env:
-          ENABLE_CONTENT_SYNC: 'true'
-          CONTENT_REPO_URL: ${{ secrets.CONTENT_REPO_URL }}
-          CONTENT_REPO_TOKEN: ${{ secrets.CONTENT_REPO_TOKEN }}
-          CONTENT_DIR: './content'
-          BILI_SESSDATA: ${{ secrets.BILI_SESSDATA }}
 
-      - name: Deploy to server via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "dist/*"
-          target: "/home/ubuntu/blog-dist"
-          strip_components: 1
-          ssh_options: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-          command_timeout: "5m"
+      - name: Deploy to nginx
+        # Runner 就在服务器上，直接本地替换即可，
+        # 不走 SCP，既不需要 SSH 私钥也没有来源 IP 被拦截的问题。
+        run: |
+          set -e
+          rm -rf /home/ubuntu/blog-dist
+          cp -r dist /home/ubuntu/blog-dist
+          echo "deployed $(du -sh /home/ubuntu/blog-dist | cut -f1)"
+
+      - name: Reload nginx
+        run: |
+          set -e
+          sudo nginx -t
+          sudo systemctl reload nginx
+          echo "nginx reloaded"
+
+      - name: Verify deployed output
+        run: |
+          set -e
+          test -f /home/ubuntu/blog-dist/index.html || {
+            echo "::error::部署目录缺少 index.html"
+            exit 1
+          }
+          echo "已发布文章："
+          ls -1 /home/ubuntu/blog-dist/posts/ 2>/dev/null || echo "(无 posts 目录)"
 
       - name: Job summary
+        if: always()
         run: |
-          echo "✅ Build and deploy completed" >> $GITHUB_STEP_SUMMARY
-          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
-            echo "**Content commit:** ${{ github.event.client_payload.message }}" >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "## Build and Deploy"
+            echo ""
+            echo "| 字段 | 值 |"
+            echo "|---|---|"
+            echo "| 触发方式 | \`${{ github.event_name }}\` |"
+            echo "| 提交 | \`${{ github.sha }}\` |"
+            echo "| 内容版本 | \`$(git -C content log --oneline -1 2>/dev/null || echo n/a)\` |"
+            echo "| 部署大小 | \`$(du -sh /home/ubuntu/blog-dist 2>/dev/null | cut -f1 || echo n/a)\` |"
+          } >> $GITHUB_STEP_SUMMARY
